@@ -26,13 +26,13 @@ public class MinecraftMSLiveAuthProcess extends ProcessDetails {
 
 
     public static final String MICROSOFT_AUTH_URL = "https://login.live.com/oauth20_authorize.srf" +
-            "?client_id=YOUR_CLIENT_ID_HERE" +
+            "?client_id=055da844-b0ca-4643-b596-2e9b59987b39" +
             "&response_type=code" +
             "&scope=XboxLive.signin%20XboxLive.offline_access" +
             "&redirect_uri=http%3A%2F%2Flocalhost%3A" + "48521" +
             "&prompt=select_account";
 
-    public final static String client_id = "YOUR_CLIENT_ID_HERE";
+    public final static String client_id = "055da844-b0ca-4643-b596-2e9b59987b39";
     private final static Integer local_port = 48521;
 
     private final static Integer loginTimeoutInSeconds = 300;
@@ -61,6 +61,9 @@ public class MinecraftMSLiveAuthProcess extends ProcessDetails {
         }
 
         helper.stopServer();
+        if(helper.getServer() != null) {
+            helper.getServer().stop(0);
+        }
 
         return startlogin(ServerHelper.data.get("access"), ServerHelper.data.get("refresh"));
     }
@@ -422,24 +425,36 @@ public class MinecraftMSLiveAuthProcess extends ProcessDetails {
         private static String verifier;
         private HttpServer server;
 
+        public HttpServer getServer() {
+            return server;
+        }
+
         @SuppressWarnings("unused")
         public void startServer(int port) throws IOException {
-            server = HttpServer.create(new InetSocketAddress("localhost", port), 0);
+            if(server == null) {
+                server = HttpServer.create(new InetSocketAddress("localhost", port), 0);
 
-            server.createContext("/", new WebHandler());
+                server.createContext("/", new WebHandler());
 
-            server.start();
+                server.start();
 
-            // Öffnen Sie das Authentifizierungsfenster
+                // Öffnen Sie das Authentifizierungsfenster
 
-            Map<String, String> codes = generateCodeChallengeAndVerifier();
-            verifier = codes.get("code_verifier");
+                Map<String, String> codes = generateCodeChallengeAndVerifier();
+                verifier = codes.get("code_verifier");
 
-            new WindowHelper().openWindow(MinecraftMSLiveAuthProcess.MICROSOFT_AUTH_URL+"&code_challenge=" + codes.get("code_challenge") + "&code_challenge_method=S256");
+                new WindowHelper().openWindow(MinecraftMSLiveAuthProcess.MICROSOFT_AUTH_URL+"&code_challenge=" + codes.get("code_challenge") + "&code_challenge_method=S256");
+            } else {
+                stopServer();
+                startServer(port);
+            }
         }
 
         public void stopServer() {
-            server.stop(5);
+            if(server != null) {
+                server.stop(0);
+                server = null;
+            }
         }
 
         static class WebHandler implements HttpHandler {
